@@ -96,7 +96,6 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"📡 타깃 가속기 인프라 감지 완료: [{device.upper()}]")
     
-    # [교정] 레포지토리 클래스 명칭 버전 1(V1) 규격으로 완벽 동기화
     engine = PureGeodesicMasterEngineV1(max_pairs=5000).to(device)
     
     # 가혹 조건 시나리오 1: 하드웨어 한계를 초과하는 부하 폭주 (total_pairs > max_pairs)
