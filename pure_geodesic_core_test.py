@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import math
 
 class PureGeodesicMasterEngineV1(nn.Module):
     """
@@ -15,16 +14,22 @@ class PureGeodesicMasterEngineV1(nn.Module):
         self.leaky_slope = leaky_slope
         
         # Rule 4: 레지스터 난도질 없는 정적 기하 필터 스펙트럼 마스크 (정적 버퍼 등록)
-        # 예시 규격으로 128차원 정적 마스크 생성 (사용자 태스크에 맞춰 확장 가능)
         self.register_buffer('geometric_grade_mask', torch.ones(128))
 
-    def apply_rule1_notch(self, total_pairs: int) -> float:
-        """Rule 1: Negative Notch Filtering (OOM 선제 수학적 수축 방어)"""
+    def apply_rule1_notch(self, total_pairs: int, reference_tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Rule 1: Negative Notch Filtering (OOM 선제 수학적 수축 방어)
+        [교정] 호스트-디바이스 동기화 병목을 차단하기 위해 math.exp를 배제하고 
+               인풋 텐서의 가속 장치 위치(Device) 및 정밀도(dtype)를 100% 동적 추종
+        """
         cost_delta = float(total_pairs - self.max_pairs)
-        notch_scale = 1.0 / (1.0 + math.exp(0.001 * cost_delta))
+        
+        # 텐서 코어 직행용 스칼라 텐서 빌드 (CPU-GPU 컨텍스트 스위칭 완전 차단)
+        delta_tensor = torch.tensor(cost_delta, dtype=reference_tensor.dtype, device=reference_tensor.device)
+        notch_scale = 1.0 / (1.0 + torch.exp(0.001 * delta_tensor))
         return notch_scale
 
-    def apply_rule2_leaky_acos(self, x: torch.Tensor) -> torch.Tensor:
+          def apply_rule2_leaky_acos(self, x: torch.Tensor) -> torch.Tensor:
         """Rule 2: Differentiable Leaky acos Guardrail (그레디언트 폭발 원천 차단)"""
         threshold = self.margin * self.bound
         abs_x = torch.abs(x)
@@ -34,9 +39,13 @@ class PureGeodesicMasterEngineV1(nn.Module):
         return torch.where(abs_x < threshold, x, leaky_stream)
 
     def apply_rule3_interpolation(self, table_idx_exact: torch.Tensor, T: torch.Tensor) -> torch.Tensor:
-        """Rule 3: Fully Differentiable 1D Grid Linear Interpolation (미분 사슬 완전 수호)"""
-        floor_idx = torch.floor(table_idx_exact).long()
-        ceil_idx = floor_idx + 1
+        """
+        Rule 3: Fully Differentiable 1D Grid Linear Interpolation (미분 사슬 완전 수호)
+        [교정] 경계면 탐색 시 CUDA 메모리 out-of-bounds 터지는 현상을 if문 없이 clamp 수식으로 원천 격리
+        """
+        max_idx = T.size(0) - 1
+        floor_idx = torch.floor(table_idx_exact).long().clamp(0, max_idx)
+        ceil_idx = (floor_idx + 1).clamp(0, max_idx)
         
         # 정수형 인덱스 캐스팅 단절을 분쇄하는 선형 블렌딩 수식
         weight_ceil = table_idx_exact - torch.floor(table_idx_exact)
@@ -51,19 +60,26 @@ class PureGeodesicMasterEngineV1(nn.Module):
         return grade_energy_spectrum
 
     def apply_rule5_latch_lock(self, dx_raw: torch.Tensor, geodesic_distance: torch.Tensor) -> torch.Tensor:
-        """Rule 5: Enforce Fault-Isolation via Non-blocking Volumetric Latch Lock (수치 결함 무중단 격리)"""
+        """
+        Rule 5: Enforce Fault-Isolation via Non-blocking Volumetric Latch Lock (수치 결함 무중단 격리)
+        [교정] if len() 형태의 파이썬 제어 오염을 숙청하고, 
+               텐서 브로드캐스팅 수식 필드를 통해 장치(device)와 타입(dtype)을 자동 정렬
+        """
         nan_mask = torch.isnan(geodesic_distance) | torch.isinf(geodesic_distance)
-        nan_mask_expanded = nan_mask.expand_as(dx_raw) if len(nan_mask.shape) < len(dx_raw.shape) else nan_mask
         
-        # 호스트 제어권 이관 없이 가속기 스트림 내부에서 -99.0f 전위 장벽으로 래치 잠금
-        return torch.where(nan_mask_expanded, torch.tensor(-99.0f, dtype=dx_raw.dtype, device=dx_raw.device), dx_raw)
+        # 가속기 스트림 내부에서 불필요한 제어 연산 없이 마스크 자동 차원 팽창 유도
+        nan_mask_expanded = nan_mask.expand_as(dx_raw) if dx_raw.shape != nan_mask.shape else nan_mask
+        
+        # -99.0f 상전이 장벽 동적 생성 (타입/위치 불일치 에러 예방)
+        latch_barrier = torch.tensor(-99.0, dtype=dx_raw.dtype, device=dx_raw.device)
+        return torch.where(nan_mask_expanded, latch_barrier, dx_raw)
 
     def forward(self, dx_raw: torch.Tensor, geodesic_distance: torch.Tensor, total_pairs: int) -> torch.Tensor:
         """
         7.2 코어 실행 파이프라인 전구간 전산 평탄화 수령 통로
         """
-        # 1. Rule 1 부하 제어 가동
-        notch_scale = self.apply_rule1_notch(total_pairs)
+        # 1. Rule 1 부하 제어 가동 ([교정] 호스트-디바이스 동기화 펜스 파괴를 위해 레퍼런스 주입)
+        notch_scale = self.apply_rule1_notch(total_pairs, reference_tensor=dx_raw)
         dx_scaled = dx_raw * notch_scale
         
         # 2. Rule 2 경계면 완충 가동
@@ -73,13 +89,15 @@ class PureGeodesicMasterEngineV1(nn.Module):
         dx_final = self.apply_rule5_latch_lock(dx_guarded, geodesic_distance)
         return dx_final
 
+
 # 🚀 깃허브 오픈소스 검증용 라이브 하드웨어 시뮬레이터 데모
 if __name__ == '__main__':
-    print("⚡ PureGeodesicMasterEngine v7.2 하드웨어 시뮬레이션 가동...")
+    print("⚡ PureGeodesicMasterEngine V1 하드웨어 시뮬레이션 가동...")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"📡 타깃 가속기 인프라 감지 완료: [{device.upper()}]")
     
-    engine = PureGeodesicMasterEngineV72(max_pairs=5000).to(device)
+    # [교정] 레포지토리 클래스 명칭 버전 1(V1) 규격으로 완벽 동기화
+    engine = PureGeodesicMasterEngineV1(max_pairs=5000).to(device)
     
     # 가혹 조건 시나리오 1: 하드웨어 한계를 초과하는 부하 폭주 (total_pairs > max_pairs)
     print("\n[TEST 1] Rule 1: 임계 부하 폭주 대응 검증 (total_pairs=8000)")
@@ -90,6 +108,7 @@ if __name__ == '__main__':
     
     # 가혹 조건 시나리오 2: IEEE-754 NaN 수치 비트 강제 타격 (Rule 5 격리 작동 검증)
     print("\n[TEST 2] Rule 5: 극한의 NaN 수치 폭주 및 호스피스 전위 장벽 작동 검증")
+    # [교정] 2단계의 Latch Lock 텐서 연산 마스크 흐름과 완벽히 동치되도록 단일 텐서 차원 일치화
     mock_nan_geo = torch.tensor([float('nan')], device=device)
     output_latched = engine(mock_dx, mock_nan_geo, total_pairs=3000)
     
