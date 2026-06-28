@@ -6,6 +6,8 @@
 ### [EN]
 `PureGeodesicMasterEngine V1` is the conceptual ingestion pathway of a hardware-intelligence unified architecture, envisioned during the process of fusing the low-level **Peripheral Spinal Reflex** mechanisms of embedded control with the high-dimensional geometric formulations of the central **Cerebral Cortex** AI layer.
 
+---
+
 ```mermaid
 graph TD
     %% ───────────────────────────────────────────────────────────
@@ -40,6 +42,7 @@ graph TD
     class C cortex;
 ```
 
+---
 
 ### 1. The Spinal Root: Low-Level Hardware Survival (말초 척수 단의 유산)
 
@@ -54,6 +57,7 @@ graph TD
 - **[KR] 진화:** 본 가속 엔진은 이 저수준 척수 반사 제어를 GPU/NPU 스트림 파이프라인 내부로 완벽히 흡수하여, 파이썬 삼항 연산자(if-else) 분기를 거세하고 `broadcast_to`와 `torch.where`를 결합했습니다. 이로써 `torch.compile` 실행 시 그래프 단절(Graph Break) 발생률을 0%로 동결하며, 호스트-디바이스 간 blocking 병목을 유발하지 않는 무정지 **Rule 5 Latch Lock** 장벽으로 진화시켰습니다.
 - **[EN] Evolution:** This acceleration engine seamlessly absorbs this low-level spinal reflex control directly into the GPU/NPU stream pipeline by completely eliminating Python-level ternary branching through `broadcast_to` and fusing it with `torch.where`. This freezes the graph break rate at exactly 0% during `torch.compile` execution, transforming it into a non-blocking **Rule 5 Latch Lock** barrier that completely bypasses host-device synchronization bottlenecks.
 
+---
 
 ### 2. The Cerebral Root: High-Dimensional Smooth Manifold (중추 대뇌 단의 유산)
 
