@@ -8,24 +8,38 @@
 
 ```mermaid
 graph TD
+    %% ───────────────────────────────────────────────────────────
+    %% 스타일 및 테마 정의 (Style and Theme Definitions)
+    %% ───────────────────────────────────────────────────────────
     classDef spinal fill:#1a1c1e,stroke:#3a4454,stroke-width:2px,color:#a0aec0;
     classDef core fill:#0d1117,stroke:#38bdf8,stroke-width:3px,color:#f8fafc,font-weight:bold;
     classDef cortex fill:#161b22,stroke:#c084fc,stroke-width:2px,color:#e9d5ff;
-    classDef arrow stroke:#38bdf8,stroke-width:2px,fill:none;
 
+    %% ───────────────────────────────────────────────────────────
+    %% 아키텍처 노드 배치 (Architecture Node Layout)
+    %% ───────────────────────────────────────────────────────────
+    
+    %% 1단계: 말초 척수 단 (Step 1: Peripheral Spinal Root)
     A["🧬 [말초 척수 단 / Peripheral Spinal Root] <br> C/C++ Embedded Hardware Control Core <br> (fluxmesh_spinal_direct_bridge_test.h) <br><br> • O(1) CRC8 Bitwise Table Lookup <br> • NS-Level Pointer Swap (Ping-Pong Buffer) <br> • -99.0f Physical Latch-Lock"]
     
+    %% 2단계: 실행 코어 (Step 2:  Core Execution Gateway)
     B["📐 [실행 코어 통로 / Execution Core Pathway] <br> PureGeodesicMasterEngine V1 <br> (pure_geodesic_core_test.py) <br><br> • 0% Runtime Branch Divergence (if-else Eradication) <br> • Analytical Surface Flattening (Smooth Squeezing) <br> • Non-blocking Volumetric Latch Lock via MUX"]
     
+    %% 3단계: 중추 대뇌 단 (Step 3: Central Cerebral Cortex)
     C["🧠 [중추 대뇌 단 / Central Cerebral Cortex] <br> Egregore v6.3 / v6.4 Cognitive Architecture <br> (integrated_egregore_core_test_v6_4.py) <br><br> • Spherical-Toroidal Topological Morphing <br> • Quantum Informatics & Schrödinger Notch Filter <br> • Casimir Vacuum Pressure Contraction"]
 
+    %% ───────────────────────────────────────────────────────────
+    %% 데이터 제어 흐름 연결 (Data Control Flow Connections)
+    %% ───────────────────────────────────────────────────────────
     A --> |"Low-Level Physics Translation <br> (호스트 동기화 병목 멸절)"| B
     B --> |"High-Dimensional Space Serving <br> (연속 미분 다양체 서빙)"| C
 
+    %% 스타일 바인딩 (Apply Class Styles)
     class A spinal;
     class B core;
     class C cortex;
 ```
+
 
 ### 1. The Spinal Root: Low-Level Hardware Survival (말초 척수 단의 유산)
 
