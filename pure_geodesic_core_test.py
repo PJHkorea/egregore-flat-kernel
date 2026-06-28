@@ -76,24 +76,23 @@ class PureGeodesicMasterEngineV1(nn.Module):
         grade_energy_spectrum = torch.mean(x ** 2, dim=0) * mask
         return grade_energy_spectrum
 
-    def apply_rule5_latch_lock(self, dx_raw: torch.Tensor, geodesic_distance: torch.Tensor) -> torch.Tensor:
+        def apply_rule5_latch_lock(self, dx_raw: torch.Tensor, geodesic_distance: torch.Tensor) -> torch.Tensor:
         """
         Rule 5: Enforce Fault-Isolation via Non-blocking Volumetric Latch Lock (수치 결함 무중단 격리 / Non-blocking Isolation of Numerical Anomalies)
-        [KR] [교정] if len() 형태의 파이썬 제어 오염을 숙청하고, 
-               텐서 브로드캐스팅 수식 필드를 통해 장치(device)와 타입(dtype)을 자동 정렬
-        [EN] [Revision] Thoroughly purges Python control-flow pollution like 'if len()', 
-               achieving automated sorting of device context and dtype via tensor broadcasting field formulas
+        [KR] [교정] 파이썬 삼항 연산자(if-else)를 broadcast_to로 대체하여 torch.compile 그래프 단절 0% 달성
+        [EN] [Revision] Replaces Python's ternary if-else with broadcast_to, achieving 0% graph breaks during torch.compile
         """
         nan_mask = torch.isnan(geodesic_distance) | torch.isinf(geodesic_distance)
         
-        # [KR] 가속기 스트림 내부에서 불필요한 제어 연산 없이 마스크 자동 차원 팽창 유도
-        # [EN] Induces automated mask dimension expansion within the accelerator stream, bypassing redundant control overheads
-        nan_mask_expanded = nan_mask.expand_as(dx_raw) if dx_raw.shape != nan_mask.shape else nan_mask
+        # [KR] 가속기 레벨에서 차원 일치 (Broadcast) 및 메모리 복사 복잡도 제로화
+        # [EN] Dimension alignment (Broadcast) at the accelerator level, achieving zero memory-copy complexity
+        nan_mask_expanded = nan_mask.broadcast_to(dx_raw.shape)
         
-        # [KR] -99.0f 상전이 장벽 동적 생성 (타입/위치 불일치 에러 예방)
-        # [EN] Dynamically generate the -99.0f phase-transition barrier, preventing type/device mismatch errors
+        # [KR] -99.0f 상전이 장벽 생성 (타입/위치 불일치 에러 예방)
+        # [EN] Generate the -99.0f phase-transition barrier, preventing type/device mismatch errors
         latch_barrier = torch.tensor(-99.0, dtype=dx_raw.dtype, device=dx_raw.device)
         return torch.where(nan_mask_expanded, latch_barrier, dx_raw)
+
 
 
         def forward(self, dx_raw: torch.Tensor, geodesic_distance: torch.Tensor, total_pairs: int) -> torch.Tensor:
