@@ -37,8 +37,9 @@ graph TD
 - **[EN] Lineage Mechanism:** Inherits the lock-free survival instinct of the embedded layer which, upon capturing IEEE-754 `NaN` bit surges from electromagnetic noise or sensor detachment, immediately dead-locks the output to a $-99.0\text{f}$ potential for apoptotic self-isolation without relying on interrupt control branches.
 
 
-- **[KR] 진화:** 본 가속 엔진은 이 저수준 척수 반사 제어를 GPU/NPU 스트림 파이프라인 내부로 완벽히 흡수하여, 단 한 줄의 비트 MUX 수식(`torch.where`)만으로 호스트-디바이스 간 blocking 병목을 유발하지 않는 무정지 **Rule 5 Latch Lock** 장벽으로 진화시켰습니다.
-- **[EN] Evolution:** This acceleration engine seamlessly absorbs this low-level spinal reflex control directly into the GPU/NPU stream pipeline, transforming it into a non-blocking **Rule 5 Latch Lock** barrier that bypasses host-device synchronization bottlenecks via a single-line bitwise MUX equation (`torch.where`).
+- **[KR] 진화:** 본 가속 엔진은 이 저수준 척수 반사 제어를 GPU/NPU 스트림 파이프라인 내부로 완벽히 흡수하여, 파이썬 삼항 연산자(if-else) 분기를 거세하고 `broadcast_to`와 `torch.where`를 결합했습니다. 이로써 `torch.compile` 실행 시 그래프 단절(Graph Break) 발생률을 0%로 동결하며, 호스트-디바이스 간 blocking 병목을 유발하지 않는 무정지 **Rule 5 Latch Lock** 장벽으로 진화시켰습니다.
+- **[EN] Evolution:** This acceleration engine seamlessly absorbs this low-level spinal reflex control directly into the GPU/NPU stream pipeline by completely eliminating Python-level ternary branching through `broadcast_to` and fusing it with `torch.where`. This freezes the graph break rate at exactly 0% during `torch.compile` execution, transforming it into a non-blocking **Rule 5 Latch Lock** barrier that completely bypasses host-device synchronization bottlenecks.
+
 
 ### 2. The Cerebral Root: High-Dimensional Smooth Manifold (중추 대뇌 단의 유산)
 
